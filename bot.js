@@ -514,6 +514,26 @@ function getWarmupPosts(leadToken) {
     },
 
     {
+      type: 'videos_then_button',
+      parse_mode: 'HTML',
+      videos: [
+        'BAACAgIAAxkBAANUaeK7AjEuTv_LnA38bQ6Z3hRUbUMAAtWQAAL9DxlLGC5f7Jp18wABOwQ',
+        'BAACAgIAAxkBAANVaeK7zdmye-eKlY0AAXoNU_T6UOwBAALWkAAC_Q8ZS7cTu_PxJ1n-OwQ',
+        'BAACAgIAAxkBAANWaeK75CMGXQLznHYx274DLGoFjb4AAteQAAL9DxlLE0AAAZhJufJOOwQ',
+        'BAACAgIAAxkBAANXaeK8B1GpG-GK7LW4yH-PAAGqtaTfAALYkAAC_Q8ZS4xvIVfshALqOwQ',
+        'BAACAgIAAxkBAANYaeK8F2edqsoyOoT9esVT5j7VkX0AAtmQAAL9DxlLGBW_RXFBagE7BA'
+      ],
+      followup_text:
+`<b>Думаєте, що ваша ніша <i><u>занадто вузька?</u></i></b>
+Просто подивіться ці відео.
+<i>Наш Клуб працює із <u>сотнями ніш!</u> І кожен з підприємців отримує круті результати.</i>
+
+Якщо ви шукаєте оточення, де кожен знає, як збільшити прибуток свого бізнесу — <i>чекаємо вас у Конс на Бі$!</i>`,
+      button_text: 'ХОЧУ В КЛУБ!',
+      button_url: link
+    },
+
+    {
       type: 'photo_with_text',
       parse_mode: 'HTML',
       photo: 'https://i.ibb.co/FbCDznx2/image-2026-04-21-10-29-33.png',
@@ -546,34 +566,6 @@ function getWarmupPosts(leadToken) {
       button_url: link
     },
 
-    {
-      type: 'button_text',
-      parse_mode: 'HTML',
-      text:
-`Якщо у вас досі є сумніви і ви не знаєте, чи підійде навчання саме вам, <b>отримайте безкоштовну консультацію</b> від нашого спеціаліста 😉`,
-      button_text: 'Хочу на консультацію!',
-      button_url: link
-    },
-
-    {
-      type: 'videos_then_button',
-      parse_mode: 'HTML',
-      videos: [
-        'BAACAgIAAxkBAANUaeK7AjEuTv_LnA38bQ6Z3hRUbUMAAtWQAAL9DxlLGC5f7Jp18wABOwQ',
-        'BAACAgIAAxkBAANVaeK7zdmye-eKlY0AAXoNU_T6UOwBAALWkAAC_Q8ZS7cTu_PxJ1n-OwQ',
-        'BAACAgIAAxkBAANWaeK75CMGXQLznHYx274DLGoFjb4AAteQAAL9DxlLE0AAAZhJufJOOwQ',
-        'BAACAgIAAxkBAANXaeK8B1GpG-GK7LW4yH-PAAGqtaTfAALYkAAC_Q8ZS4xvIVfshALqOwQ',
-        'BAACAgIAAxkBAANYaeK8F2edqsoyOoT9esVT5j7VkX0AAtmQAAL9DxlLGBW_RXFBagE7BA'
-      ],
-      followup_text:
-`<b>Думаєте, що ваша ніша <i><u>занадто вузька?</u></i></b>
-Просто подивіться ці відео.
-<i>Наш Клуб працює із <u>сотнями ніш!</u> І кожен з підприємців отримує круті результати.</i>
-
-Якщо ви шукаєте оточення, де кожен знає, як збільшити прибуток свого бізнесу — <i>чекаємо вас у Конс на Бі$!</i>`,
-      button_text: 'ХОЧУ В КЛУБ!',
-      button_url: link
-    },
 
     {
       type: 'media_group_then_button_text',
