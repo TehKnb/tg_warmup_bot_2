@@ -497,7 +497,7 @@ function getWarmupPosts(leadToken) {
     {
       type: 'photo_with_text',
       parse_mode: 'HTML',
-      photo: 'https://i.ibb.co/RTjMfkFR/photo-2026-04-21-10-48-04.jpg',
+      photo: 'https://i.ibb.co/KdbYMfv/photo-2026-05-01-13-16-27.jpg',
       text:
 `<b>Що таке “Стратегія керованого зростання”?</b>
 
@@ -1006,6 +1006,10 @@ app.post('/telegram/webhook', async (req, res) => {
     
 
       return res.sendStatus(200);
+    }
+
+    if (update.message && update.message.video) {
+      console.log('VIDEO FILE_ID:', update.message.video.file_id);
     }
 
     // 2. звичайні повідомлення
