@@ -18,6 +18,14 @@ const PORT = process.env.PORT || 3000;
 function generateToken() {
   return crypto.randomBytes(16).toString('hex');
 }
+function normalizeUtmSource(value) {
+  if (!value) return null;
+
+  return String(value)
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, 50) || null;
+}
 
 async function telegram(method, payload) {
     console.log('TELEGRAM CALL:', method, payload);
@@ -55,7 +63,7 @@ async function getChatMember(chatId, userId) {
   });
 }
 
-async function sendLeadToCrm({ leadToken, phone, name }) {
+async function sendLeadToCrm({ leadToken, phone, name, utmSource }) {
   if (!CRM_WEBHOOK_URL) {
     throw new Error('CRM_WEBHOOK_URL is not set');
   }
@@ -65,6 +73,7 @@ async function sendLeadToCrm({ leadToken, phone, name }) {
     Source: 'Заявка на безкоштовну консультацію (Персональний розбір бізнесу, тепла, ТГ-бот)',
     sitename: 'ТГ-бот @knb_lead_bot',
     'Lead Token': leadToken,
+    utm_source: utmSource || '',
     Phone: phone,
     Name: name
   };
@@ -188,7 +197,7 @@ function getSlotLabel(hour) {
 
 async function sendAllPosts(chatId, telegramUserId) {
   const result = await pool.query(
-    `SELECT lead_token FROM users WHERE telegram_user_id = $1`,
+    `SELECT lead_token, utm_source FROM users WHERE telegram_user_id = $1`,
     [telegramUserId]
   );
 
@@ -202,7 +211,7 @@ async function sendAllPosts(chatId, telegramUserId) {
     return;
   }
 
-  const posts = getWarmupPosts(user.lead_token);
+  const posts = getWarmupPosts(user.lead_token, user.utm_source);
 
   for (let i = 0; i < posts.length; i++) {
     const post = posts[i];
@@ -447,8 +456,16 @@ function kyivLocalToUtc(year, month, day, hour, minute, second) {
   return new Date(targetAsUtc - offsetMs);
 }
 
-function buildLandingLink(leadToken) {
-  return `${LANDING_URL}?lead_token=${encodeURIComponent(leadToken)}`;
+function buildLandingLink(leadToken, utmSource) {
+  const url = new URL(LANDING_URL);
+
+  url.searchParams.set('lead_token', leadToken);
+
+  if (utmSource) {
+    url.searchParams.set('utm_source', utmSource);
+  }
+
+  return url.toString();
 }
 
 async function sendWarmupIntro(chatId, firstName) {
@@ -484,7 +501,7 @@ async function sendNotSubscribed(chatId) {
 
 async function sendBonusLink(chatId, telegramUserId) {
   const result = await pool.query(
-    `SELECT lead_token FROM users WHERE telegram_user_id = $1`,
+    `SELECT lead_token, utm_source FROM users WHERE telegram_user_id = $1`,
     [telegramUserId]
   );
 
@@ -495,7 +512,7 @@ async function sendBonusLink(chatId, telegramUserId) {
     return;
   }
 
-  const link = `${LANDING_URL}?lead_token=${encodeURIComponent(user.lead_token)}`;
+  const link = buildLandingLink(user.lead_token, user.utm_source);
 
   await telegram('sendMessage', {
     chat_id: chatId,
@@ -510,7 +527,7 @@ async function sendBonusLink(chatId, telegramUserId) {
 }
 
 function getWarmupPosts(leadToken) {
-  const link = buildLandingLink(leadToken);
+    const link = buildLandingLink(leadToken, utmSource);
 
   return [
     {
@@ -661,7 +678,7 @@ function getWarmupPosts(leadToken) {
 }
 
 async function sendPostToUser(user) {
-  const posts = getWarmupPosts(user.lead_token);
+  const posts = getWarmupPosts(user.lead_token, user.utm_source);
   const post = posts[user.last_sent_step];
 
   if (!post) {
@@ -954,7 +971,7 @@ app.post('/telegram/webhook', async (req, res) => {
       const contact = message.contact;
 
       const result = await pool.query(
-        `SELECT lead_token, first_name
+        `SELECT lead_token, first_name, utm_source
         FROM users
         WHERE telegram_user_id = $1`,
         [telegramUserId]
@@ -984,7 +1001,8 @@ app.post('/telegram/webhook', async (req, res) => {
         await sendLeadToCrm({
           leadToken: user.lead_token,
           phone,
-          name
+          name,
+          utmSource: user.utm_source
         });
 
       const isWorking = isWorkingTimeKyiv();
@@ -1034,6 +1052,63 @@ app.post('/telegram/webhook', async (req, res) => {
     const firstName = message.from.first_name || null;
 
     if (text === '/start' || text.startsWith('/start ')) {
+      const startPayload = text.startsWith('/start ')
+  ? text.split(' ')[1]
+  : null;
+
+const utmSource = normalizeUtmSource(startPayload);
+
+let result = await pool.query(
+  `SELECT * FROM users WHERE telegram_user_id = $1`,
+  [telegramUserId]
+);
+
+let user = result.rows[0];
+
+if (!user) {
+  const leadToken = generateToken();
+
+  await pool.query(
+    `INSERT INTO users (
+      telegram_user_id,
+      chat_id,
+      username,
+      first_name,
+      lead_token,
+      utm_source,
+      status,
+      started_at,
+      next_message_at,
+      last_sent_step
+    ) VALUES ($1, $2, $3, $4, $5, $6, 'new', $7, NULL, 0)`,
+    [
+      telegramUserId,
+      chatId,
+      username,
+      firstName,
+      leadToken,
+      utmSource,
+      new Date().toISOString()
+    ]
+  );
+} else {
+  await pool.query(
+    `UPDATE users
+     SET chat_id = $1,
+         username = $2,
+         first_name = $3,
+         utm_source = COALESCE($4, utm_source)
+     WHERE telegram_user_id = $5`,
+    [
+      chatId,
+      username,
+      firstName,
+      utmSource,
+      telegramUserId
+    ]
+  );
+}
+
       await telegram('sendPhoto', {
         chat_id: chatId,
         photo: 'https://i.ibb.co/7h4WjNn/image.png',
@@ -1104,7 +1179,7 @@ app.post('/telegram/webhook', async (req, res) => {
 
     if (text === '/me') {
       const result = await pool.query(
-        `SELECT id, telegram_user_id, chat_id, username, first_name, lead_token, status, started_at, next_message_at, last_sent_step
+        `SELECT id, telegram_user_id, chat_id, username, first_name, lead_token, utm_source, status, started_at, next_message_at, last_sent_step
          FROM users
          WHERE telegram_user_id = $1`,
         [telegramUserId]
@@ -1126,6 +1201,7 @@ app.post('/telegram/webhook', async (req, res) => {
             `chat_id: ${user.chat_id}\n` +
             `username: ${user.username || '-'}\n` +
             `first_name: ${user.first_name || '-'}\n` +
+            `utm_source: ${user.utm_source || '-'}\n` +
             `lead_token: ${user.lead_token}\n` +
             `status: ${user.status}\n` +
             `started_at: ${user.started_at}\n` +
