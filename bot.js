@@ -555,7 +555,7 @@ function getWarmupPosts(leadToken, utmSource) {
       type: 'videos_then_button',
       parse_mode: 'HTML',
       videos: [
-        'BAACAgIAAxkBAAIB-Wn1DNdqsom3q2uPgBqPxwKSbYUsAAI_qAACauaoS0_Kwrp9BpRPOwQ'
+        'BAACAgIAAxkBAANOafnm6wVF7D53WmiTL13ITDUCtzMAAq2gAALhxNFLH27qlwTWAos7BA'
       ],
       followup_text:
 `<i>Заповнюйте анкету для консультації щодо навчання <b>ТУТ</b>👇🏻</i>`,
@@ -640,7 +640,7 @@ function getWarmupPosts(leadToken, utmSource) {
     {
       type: 'video_then_button',
       parse_mode: 'HTML',
-      video: 'BAACAgIAAxkBAANZaeLAA4JL59LMaM1K7OzXLbKuWasAAtqQAAL9DxlLCgQHcgo8B6c7BA',
+      video: 'BAACAgIAAxkBAANPafnnXFPP2tzomRzLgy6LJhDZVJEAArqgAALhxNFLfcqeFAUcHYo7BA',
       followup_text:
 `<b>Як бачите, Конс на Бі$ викликає довіру!</b>
 І якщо ви хочете дізнатись, як ваш бізнес може змінитись завдяки нашому навчанню — <i><u>заповнюйте анкету тут</u></i>👇🏻`,
@@ -659,7 +659,7 @@ function getWarmupPosts(leadToken, utmSource) {
     {
       type: 'video_then_text',
       parse_mode: 'HTML',
-      video: 'BAACAgIAAxkBAANaaeLAphl2XTuMrwZv85tcsUcnZZMAAtyQAAL9DxlLeuYcW0BNigY7BA',
+      video: 'BAACAgIAAxkBAANQafnnxmeUPKbBbNTuwwcpV7GtvaIAAr-gAALhxNFLbhiXAkvOnUw7BA',
       followup_text:
 `<b>Все ще сумніваєтесь, що ваша ніша не підходить?</b>
 Подивіться, скільки підприємців приходить до нас із нестандартними нішами ⬆️
@@ -1146,15 +1146,15 @@ if (!user) {
       return res.sendStatus(200);
     }
 
-    if (text === '/posts' || text.startsWith('/posts@')) {
-        await telegram('sendMessage', {
-          chat_id: chatId,
-          text: 'Тестова розсилка запущена один раз.'
+      if (text === '/posts' || text.startsWith('/posts@')) {
+        res.sendStatus(200);
+
+        sendAllPosts(chatId, telegramUserId).catch(error => {
+          console.error('SEND ALL POSTS ERROR:', error);
         });
 
-      await sendAllPosts(chatId, telegramUserId);
-      return res.sendStatus(200);
-    }
+        return;
+      }
 
     if (text === '/forget') {
       await pool.query(
