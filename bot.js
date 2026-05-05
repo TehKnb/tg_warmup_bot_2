@@ -375,6 +375,50 @@ function getCurrentKyivSlotKey() {
   return `${now.year}-${mm}-${dd} ${slot}`;
 }
 
+function getFirstSlotDateUtc(fromDate = new Date()) {
+  const kyivFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Kyiv',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  });
+
+  function getParts(date) {
+    const parts = kyivFormatter.formatToParts(date);
+    const map = {};
+
+    for (const part of parts) {
+      if (part.type !== 'literal') map[part.type] = part.value;
+    }
+
+    return {
+      year: Number(map.year),
+      month: Number(map.month),
+      day: Number(map.day),
+      hour: Number(map.hour),
+      minute: Number(map.minute),
+      second: Number(map.second)
+    };
+  }
+
+  const now = getParts(fromDate);
+
+  const today10 = kyivLocalToUtc(now.year, now.month, now.day, 10, 0, 0);
+
+  if (today10 > fromDate) {
+    return today10;
+  }
+
+  const tomorrow = new Date(fromDate.getTime() + 24 * 60 * 60 * 1000);
+  const t = getParts(tomorrow);
+
+  return kyivLocalToUtc(t.year, t.month, t.day, 10, 0, 0);
+}
+
 function getNextSlotDateUtc(fromDate = new Date()) {
   const kyivFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Kyiv',
@@ -947,39 +991,39 @@ app.post('/telegram/webhook', async (req, res) => {
         return res.sendStatus(200);
       }
       if (data === 'check_subscription') {
-        const subscribed = await isSubscribedToChannel(telegramUserId);
+  const subscribed = await isSubscribedToChannel(telegramUserId);
 
-        await telegram('answerCallbackQuery', {
-          callback_query_id: callbackQueryId
-        });
+  await telegram('answerCallbackQuery', {
+    callback_query_id: callbackQueryId
+  });
 
-        if (!subscribed) {
-          await pool.query(
-            `UPDATE users
-            SET status = 'awaiting_subscription',
-                next_message_at = $1
-            WHERE telegram_user_id = $2`,
-            [getNextSlotDateUtc(), telegramUserId]
-          );
+  if (!subscribed) {
+    await pool.query(
+      `UPDATE users
+      SET status = 'awaiting_subscription',
+          next_message_at = $1
+      WHERE telegram_user_id = $2`,
+      [getFirstSlotDateUtc(), telegramUserId]
+    );
 
-          await sendNotSubscribed(chatId);
-          return res.sendStatus(200);
-        }
+    await sendNotSubscribed(chatId);
+    return res.sendStatus(200);
+  }
 
-        await pool.query(
-          `UPDATE users
-          SET status = 'warming',
-              subscribed_at = NOW(),
-              next_message_at = $1,
-              last_sent_step = 0
-          WHERE telegram_user_id = $2`,
-          [getNextSlotDateUtc(), telegramUserId]
-        );
+  await pool.query(
+    `UPDATE users
+    SET status = 'warming',
+        subscribed_at = NOW(),
+        next_message_at = $1,
+        last_sent_step = 0
+    WHERE telegram_user_id = $2`,
+    [getFirstSlotDateUtc(), telegramUserId]
+  );
 
-        await sendBonusLink(chatId, telegramUserId);
+  await sendBonusLink(chatId, telegramUserId);
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
       return res.sendStatus(200);
     }
@@ -1190,7 +1234,7 @@ if (!user) {
                next_message_at = $1,
                last_sent_step = 0
            WHERE telegram_user_id = $2`,
-          [getNextSlotDateUtc(), telegramUserId]
+          [getFirstSlotDateUtc(), telegramUserId]
         );
 
         await telegram('sendMessage', {
