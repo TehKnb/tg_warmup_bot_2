@@ -526,7 +526,7 @@ async function sendBonusLink(chatId, telegramUserId) {
   });
 }
 
-function getWarmupPosts(leadToken) {
+function getWarmupPosts(leadToken, utmSource) {
     const link = buildLandingLink(leadToken, utmSource);
 
   return [
