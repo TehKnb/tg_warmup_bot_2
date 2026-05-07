@@ -367,7 +367,7 @@ function getCurrentKyivSlotKey() {
   const now = getKyivNowParts();
   const slot = getSlotLabel(now.hour);
 
-  if (!slot || now.minute !== 0) return null;
+  if (!slot) return null;
 
   const mm = String(now.month).padStart(2, '0');
   const dd = String(now.day).padStart(2, '0');
@@ -520,7 +520,7 @@ async function sendWarmupIntro(chatId, firstName) {
     chat_id: chatId,
     parse_mode: 'HTML',
     text:
-`${name}, ми підготували для вас <b>бонусні розбори бізнесів</b>, в яких Олександр Морозов на онлайн-зустрічах відповідає на питання підприємців та дає практичні поради для впровадження.
+`${name}, ми підготували для вас <b>бонусний розбір "Контент-розпаковка вашого бізнесу"</b>, де ви дізнаєтесь, як позиціонувати свій бізнес в Instagram, щоб він приносив стабільні продажі 🔥
 
 <i>Але спочатку перевіримо <b>вашу підписку на наш канал:</b></i>`,
     reply_markup: {
