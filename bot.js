@@ -1366,7 +1366,10 @@ cron.schedule('* * * * *', async () => {
 
     const errorText = String(error.message || '');
 
-    if (errorText.includes('bot was blocked by the user')) {
+    if (
+      errorText.includes('bot was blocked by the user') ||
+      errorText.includes('"error_code":403')
+    ) {
 
       console.log(`USER BLOCKED BOT: ${user.telegram_user_id}`);
 
