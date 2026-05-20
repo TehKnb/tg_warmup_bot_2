@@ -1238,7 +1238,7 @@ if (!user) {
         [telegramUserId]
       );
       
-      await sendMetaEvent('View', {
+      await sendMetaEvent('PageView', {
         telegram_user_id: telegramUserId,
         chat_id: chatId,
         username,
