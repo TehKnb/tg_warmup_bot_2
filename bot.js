@@ -95,6 +95,57 @@ async function sendLeadToCrm({ leadToken, phone, name, utmSource }) {
   console.log('CRM LEAD SENT:', payload);
 }
 
+async function sendMetaEvent(eventName, user = {}) {
+  const pixelId = process.env.META_PIXEL_ID;
+  const accessToken = process.env.META_ACCESS_TOKEN;
+
+  if (!pixelId || !accessToken) {
+    console.warn('META_PIXEL_ID or META_ACCESS_TOKEN is not set');
+    return;
+  }
+
+  const externalId = user.lead_token || user.telegram_user_id || user.chat_id || '';
+
+  const payload = {
+    data: [
+      {
+        event_name: eventName,
+        event_time: Math.floor(Date.now() / 1000),
+        action_source: 'chat',
+        user_data: {
+          external_id: crypto
+            .createHash('sha256')
+            .update(String(externalId))
+            .digest('hex')
+        },
+        custom_data: {
+          telegram_user_id: user.telegram_user_id || '',
+          username: user.username || '',
+          utm_source: user.utm_source || ''
+        }
+      }
+    ]
+  };
+
+  const res = await fetch(
+    `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error('META EVENT ERROR:', data);
+    return;
+  }
+
+  console.log('META EVENT SENT:', eventName, data);
+}
+
 async function askForContact(chatId) {
   await telegram('sendMessage', {
     chat_id: chatId,
@@ -1069,6 +1120,13 @@ app.post('/telegram/webhook', async (req, res) => {
           utmSource: user.utm_source
         });
 
+        await sendMetaEvent('Lead', {
+            telegram_user_id: telegramUserId,
+            chat_id: chatId,
+            lead_token: user.lead_token,
+            utm_source: user.utm_source
+        });
+
       const isWorking = isWorkingTimeKyiv();
 
       const successText = isWorking
@@ -1172,6 +1230,22 @@ if (!user) {
     ]
   );
 }
+
+      const metaUserResult = await pool.query(
+        `SELECT lead_token, utm_source
+         FROM users
+         WHERE telegram_user_id = $1`,
+        [telegramUserId]
+      );
+      
+      await sendMetaEvent('View', {
+        telegram_user_id: telegramUserId,
+        chat_id: chatId,
+        username,
+        first_name: firstName,
+        lead_token: metaUserResult.rows[0]?.lead_token,
+        utm_source: metaUserResult.rows[0]?.utm_source
+      });
 
       await telegram('sendPhoto', {
         chat_id: chatId,
@@ -1307,7 +1381,7 @@ app.post('/lead', async (req, res) => {
        SET status = 'converted',
            next_message_at = NULL
        WHERE lead_token = $1
-       RETURNING id, telegram_user_id, lead_token, status`,
+       RETURNING id, telegram_user_id, lead_token, utm_source, status`,
       [lead_token]
     );
 
@@ -1316,6 +1390,8 @@ app.post('/lead', async (req, res) => {
     }
 
     console.log('Lead converted:', result.rows[0]);
+
+    await sendMetaEvent('Lead', result.rows[0]);
 
     return res.json({ ok: true, user: result.rows[0] });
   } catch (error) {
