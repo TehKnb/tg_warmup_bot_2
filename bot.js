@@ -588,7 +588,7 @@ async function sendNotSubscribed(chatId) {
     text: 'Не бачимо вашої підписки, спробуйте ще раз 👇🏻',
     reply_markup: {
       inline_keyboard: [
-        [{ text: 'Підписатись на канал', url: CHANNEL_URL }],
+        [{ text: 'Підписатися на канал', url: CHANNEL_URL }],
         [{ text: 'Готово✅', callback_data: 'check_subscription' }]
       ]
     }
