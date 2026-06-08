@@ -576,6 +576,7 @@ async function sendWarmupIntro(chatId, firstName) {
 <i>Але спочатку перевіримо <b>вашу підписку на наш канал:</b></i>`,
     reply_markup: {
       inline_keyboard: [
+        [{ text: 'Підписатися на канал', url: CHANNEL_URL }],
         [{ text: 'Готово✅', callback_data: 'check_subscription' }]
       ]
     }
