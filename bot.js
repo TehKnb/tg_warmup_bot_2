@@ -13,6 +13,7 @@ const LANDING_URL = process.env.LANDING_URL;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const CHANNEL_URL = process.env.CHANNEL_URL;
 const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL;
+const GOOGLE_SHEET_WEBHOOK_URL = process.env.GOOGLE_SHEET_WEBHOOK_URL;
 const PORT = process.env.PORT || 3000;
 
 function generateToken() {
@@ -244,6 +245,31 @@ function getSlotLabel(hour) {
   if (hour === 14) return '14:00';
   if (hour === 18) return '18:00';
   return null;
+}
+
+async function sendToGoogleSheet(payload) {
+  if (!GOOGLE_SHEET_WEBHOOK_URL) {
+    console.warn('GOOGLE_SHEET_WEBHOOK_URL is not set');
+    return;
+  }
+
+  try {
+    const res = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const text = await res.text();
+
+    if (!res.ok) {
+      console.error('GOOGLE SHEET ERROR:', res.status, text);
+    } else {
+      console.log('GOOGLE SHEET SENT:', payload);
+    }
+  } catch (error) {
+    console.error('GOOGLE SHEET SEND ERROR:', error);
+  }
 }
 
 async function sendAllPosts(chatId, telegramUserId) {
@@ -1072,6 +1098,12 @@ app.post('/telegram/webhook', async (req, res) => {
     [getFirstSlotDateUtc(), telegramUserId]
   );
 
+        await sendToGoogleSheet({
+          event: 'subscription_confirmed',
+          telegram_user_id: telegramUserId,
+          status: 'warming'
+        });
+
   await sendBonusLink(chatId, telegramUserId);
 
   return res.sendStatus(200);
@@ -1231,6 +1263,12 @@ if (!user) {
     ]
   );
 }
+      await sendToGoogleSheet({
+        event: 'bot_start',
+        telegram_user_id: telegramUserId,
+        status: 'new',
+        utm_source: utmSource || ''
+      });
 
       const metaUserResult = await pool.query(
         `SELECT lead_token, utm_source
@@ -1389,6 +1427,13 @@ app.post('/lead', async (req, res) => {
     if (!result.rows.length) {
       return res.status(404).json({ ok: false, error: 'User not found by lead_token' });
     }
+
+    await sendToGoogleSheet({
+      event: 'lead_created',
+      telegram_user_id: result.rows[0].telegram_user_id,
+      status: result.rows[0].status,
+      utm_source: result.rows[0].utm_source || ''
+    });
 
     console.log('Lead converted:', result.rows[0]);
 
