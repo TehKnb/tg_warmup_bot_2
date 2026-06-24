@@ -128,14 +128,23 @@ async function sendMetaEvent(eventName, user = {}) {
     ]
   };
 
-  const res = await fetch(
-    `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }
-  );
+  const metaController = new AbortController();
+  const metaTimeout = setTimeout(() => metaController.abort(), 4000);
+
+  let res;
+  try {
+    res = await fetch(
+      `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: metaController.signal
+      }
+    );
+  } finally {
+    clearTimeout(metaTimeout);
+  }
 
   const data = await res.json();
 
@@ -254,11 +263,20 @@ async function sendToGoogleSheet(payload) {
   }
 
   try {
-    const res = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const sheetController = new AbortController();
+    const sheetTimeout = setTimeout(() => sheetController.abort(), 4000);
+
+    let res;
+    try {
+      res = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: sheetController.signal
+      });
+    } finally {
+      clearTimeout(sheetTimeout);
+    }
 
     const text = await res.text();
 
@@ -995,9 +1013,24 @@ app.get('/', (req, res) => {
   res.json({ ok: true, service: 'tg-warmup-bot' });
 });
 
+
+const processedUpdates = new Set();
 app.post('/telegram/webhook', async (req, res) => {
+  res.sendStatus(200);
+
+  const update = req.body;
+  const updateId = update?.update_id;
+
+  if (!updateId || processedUpdates.has(updateId)) return;
+  processedUpdates.add(updateId);
+
+  if (processedUpdates.size > 1000) {
+    const arr = [...processedUpdates];
+    arr.slice(0, 500).forEach(id => processedUpdates.delete(id));
+  }
+
   try {
-    const update = req.body;
+
 
     // 1. inline-кнопки
     if (update.callback_query) {
@@ -1066,7 +1099,7 @@ app.post('/telegram/webhook', async (req, res) => {
 
         await sendWarmupIntro(chatId, firstName);
 
-        return res.sendStatus(200);
+        return;
       }
       if (data === 'check_subscription') {
   const subscribed = await isSubscribedToChannel(telegramUserId);
@@ -1085,7 +1118,7 @@ app.post('/telegram/webhook', async (req, res) => {
     );
 
     await sendNotSubscribed(chatId);
-    return res.sendStatus(200);
+    return;
   }
 
   await pool.query(
@@ -1106,10 +1139,10 @@ app.post('/telegram/webhook', async (req, res) => {
 
   await sendBonusLink(chatId, telegramUserId);
 
-  return res.sendStatus(200);
+  return;
 }
 
-      return res.sendStatus(200);
+      return;
     }
 
     if (update.message && update.message.contact) {
@@ -1136,7 +1169,7 @@ app.post('/telegram/webhook', async (req, res) => {
           }
         });
 
-        return res.sendStatus(200);
+        return;
       }
 
       const phone = contact.phone_number || '';
@@ -1187,7 +1220,7 @@ app.post('/telegram/webhook', async (req, res) => {
       }
     
 
-      return res.sendStatus(200);
+      return;
     }
 
     if (update.message && update.message.video) {
@@ -1196,7 +1229,7 @@ app.post('/telegram/webhook', async (req, res) => {
 
     // 2. звичайні повідомлення
     if (!update.message || !update.message.text) {
-      return res.sendStatus(200);
+      return;
     }
 
     const message = update.message;
@@ -1300,16 +1333,14 @@ if (!user) {
         }
       });
 
-      return res.sendStatus(200);
+      return;
     }
 
       if (text === '/posts' || text.startsWith('/posts@')) {
-        res.sendStatus(200);
-
         sendAllPosts(chatId, telegramUserId).catch(error => {
           console.error('SEND ALL POSTS ERROR:', error);
         });
-
+      
         return;
       }
 
@@ -1324,7 +1355,7 @@ if (!user) {
         text: 'Ваші дані видалено. Тепер можете почати заново через /start'
       });
 
-      return res.sendStatus(200);
+      return;
     }
 
     if (text === '/reset') {
@@ -1356,7 +1387,7 @@ if (!user) {
         });
       }
 
-      return res.sendStatus(200);
+      return;
     }
 
     if (text === '/me') {
@@ -1392,18 +1423,17 @@ if (!user) {
         });
       }
 
-      return res.sendStatus(200);
+      return;
     }
 
     if (!text.startsWith('/')) {
       await askForContact(chatId);
-      return res.sendStatus(200);
+      return;
     }
 
-    return res.sendStatus(200);
+    return;
   } catch (error) {
     console.error('WEBHOOK ERROR:', error);
-    return res.sendStatus(500);
   }
 });
 
