@@ -1277,7 +1277,7 @@ if (!user) {
         [telegramUserId]
       );
       
-      await sendMetaEvent('PageView', {
+      await sendMetaEvent('CompleteRegistration', {
         telegram_user_id: telegramUserId,
         chat_id: chatId,
         username,
