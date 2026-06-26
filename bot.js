@@ -72,7 +72,7 @@ async function sendLeadToCrm({ leadToken, phone, name, utmSource }) {
   const payload = {
     Nameform: 'Заявка на безкоштовну консультацію: Персональний розбір бізнесу, тепла, ТГ-бот',
     Source: 'Заявка на безкоштовну консультацію (Персональний розбір бізнесу, тепла, ТГ-бот)',
-    sitename: 'ТГ-бот @knb_bonus_bot',
+    sitename: 'ТГ-бот @knb_rozbir_bot',
     'Lead Token': leadToken,
     utm_source: utmSource || '',
     Phone: phone,
